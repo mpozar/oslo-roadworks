@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oslo Roadworks</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="topbar">
+    <div id="branding">
+      <span id="logo">🚧</span>
+      <span id="app-title">Oslo Roadworks</span>
+    </div>
+
+    <div id="search-wrap">
+      <input id="search" type="text" placeholder="Search address in Oslo…" autocomplete="off" />
+      <ul id="suggestions"></ul>
+    </div>
+
+    <div id="date-wrap">
+      <label>From <input type="date" id="date-from" /></label>
+      <label>To <input type="date" id="date-to" /></label>
+      <button id="btn-reset">Reset</button>
+    </div>
+
+    <div id="legend">
+      <span class="dot active"></span>Active
+      <span class="dot planned"></span>Planned
+      <span class="dot done"></span>Completed
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="sidebar" class="hidden">
+    <button id="sidebar-close">✕</button>
+    <div id="sidebar-content"></div>
+  </div>
+
+  <div id="count-badge"></div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
