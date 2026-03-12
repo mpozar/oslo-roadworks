@@ -1,6 +1,7 @@
 """
 Proxy server for Oslo Roadworks.
-Forwards /api/map/* requests to pub.soksys.no (bypassing CORS) and serves static files.
+Handles /api/soksys requests by forwarding to pub.soksys.no (bypassing CORS)
+and serves static files.
 
 Usage:
     python3 proxy.py
@@ -26,8 +27,8 @@ MIME = {
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
-        if self.path.startswith("/api/map/"):
-            self._proxy()
+        if path == "/api/soksys":
+            self._proxy_soksys()
         elif path in ("/", "/index.html"):
             self._serve_file("index.html", "text/html")
         elif path in ("/style.css", "/app.js"):
@@ -36,10 +37,19 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
-    def _proxy(self):
-        url = UPSTREAM + self.path
+    def _proxy_soksys(self):
+        qs = urllib.parse.urlparse(self.path).query
+        params = urllib.parse.parse_qs(qs, keep_blank_values=True)
+        endpoint = params.get("endpoint", [""])[0]
+        extent   = params.get("extent",   [""])[0]
+        filter_  = params.get("filter",   [""])[0]
+        upstream_url = (
+            f"{UPSTREAM}/api/map/{endpoint}"
+            f"?extent={urllib.parse.quote(extent, safe='')}"
+            f"&filter={urllib.parse.quote(filter_, safe='')}"
+        )
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "oslo-roadworks-proxy/0.1"})
+            req = urllib.request.Request(upstream_url, headers={"User-Agent": "oslo-roadworks-proxy/0.1"})
             with urllib.request.urlopen(req, timeout=20) as resp:
                 data = resp.read()
             self.send_response(200)

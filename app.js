@@ -99,7 +99,23 @@ async function fetchLayer(endpoint, filterParam) {
     return (data.features || []).map(f => ({
       ...f,
       geometry: reprojectGeometry(f.geometry),
-    }));
+    })).filter(f => {
+      // Drop absurdly large polygons (master zone permits, not actual digs).
+      // Threshold: bounding box > ~1km × 1km in WGS84 degrees at Oslo latitude
+      // (1° lon ≈ 55 km, 1° lat ≈ 111 km → 0.018° lon × 0.009° lat ≈ 1km×1km)
+      if (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') {
+        const rings = f.geometry.type === 'Polygon'
+          ? f.geometry.coordinates
+          : f.geometry.coordinates.flat();
+        const coords = rings.flat();
+        const lngs = coords.map(c => c[0]);
+        const lats = coords.map(c => c[1]);
+        const w = Math.max(...lngs) - Math.min(...lngs);
+        const h = Math.max(...lats) - Math.min(...lats);
+        if (w > 0.018 || h > 0.009) return false;  // bigger than ~1km
+      }
+      return true;
+    });
   } catch (e) {
     console.warn('Fetch error', endpoint, e);
     return [];
@@ -175,6 +191,18 @@ function applyFilters() {
         'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 2.5, 1.2],
       },
     });
+
+    // Invisible wide hit-area layer — makes narrow polygons & lines easy to click
+    map.addLayer({
+      id: 'roadworks-hit',
+      type: 'line',
+      source: 'roadworks',
+      paint: {
+        'line-color': 'transparent',
+        'line-width': 20,
+        'line-opacity': 0,
+      },
+    });
   }
 
   updateBadge(visible.length);
@@ -188,23 +216,25 @@ function updateBadge(n) {
 // ── Hover effect ──────────────────────────────────────────────────────────────
 let hoveredId = null;
 
-map.on('mousemove', 'roadworks-fill', e => {
-  map.getCanvas().style.cursor = 'pointer';
-  if (hoveredId !== null) map.setFeatureState({ source: 'roadworks', id: hoveredId }, { hover: false });
-  hoveredId = e.features[0].id;
-  map.setFeatureState({ source: 'roadworks', id: hoveredId }, { hover: true });
-});
+const INTERACTIVE_LAYERS = ['roadworks-fill', 'roadworks-hit'];
 
-map.on('mouseleave', 'roadworks-fill', () => {
-  map.getCanvas().style.cursor = '';
-  if (hoveredId !== null) map.setFeatureState({ source: 'roadworks', id: hoveredId }, { hover: false });
-  hoveredId = null;
-});
+INTERACTIVE_LAYERS.forEach(layer => {
+  map.on('mousemove', layer, e => {
+    map.getCanvas().style.cursor = 'pointer';
+    if (hoveredId !== null) map.setFeatureState({ source: 'roadworks', id: hoveredId }, { hover: false });
+    hoveredId = e.features[0].id;
+    map.setFeatureState({ source: 'roadworks', id: hoveredId }, { hover: true });
+  });
 
-// ── Click → sidebar ───────────────────────────────────────────────────────────
-map.on('click', 'roadworks-fill', e => {
-  const props = e.features[0].properties;
-  showSidebar(props);
+  map.on('mouseleave', layer, () => {
+    map.getCanvas().style.cursor = '';
+    if (hoveredId !== null) map.setFeatureState({ source: 'roadworks', id: hoveredId }, { hover: false });
+    hoveredId = null;
+  });
+
+  map.on('click', layer, e => {
+    showSidebar(e.features[0].properties);
+  });
 });
 
 function showSidebar(props) {
@@ -268,7 +298,7 @@ document.getElementById('sidebar-close').addEventListener('click', () => {
 
 // Close sidebar on map click outside a feature
 map.on('click', e => {
-  const features = map.queryRenderedFeatures(e.point, { layers: ['roadworks-fill'] });
+  const features = map.queryRenderedFeatures(e.point, { layers: INTERACTIVE_LAYERS });
   if (!features.length) document.getElementById('sidebar').classList.add('hidden');
 });
 
