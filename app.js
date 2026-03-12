@@ -90,7 +90,7 @@ let dateTo   = null;
 // ── Fetch data ────────────────────────────────────────────────────────────────
 async function fetchLayer(endpoint, filterParam) {
   const extent = lngLatBoundsToEPSG25833(map.getBounds());
-  const url = `/api/map/${endpoint}?extent=${extent}&filter=${filterParam}`;
+  const url = `/api/map/${endpoint}?extent=${encodeURIComponent(extent)}&filter=${encodeURIComponent(filterParam)}`;
   try {
     const resp = await fetch(url);
     if (!resp.ok) return [];
