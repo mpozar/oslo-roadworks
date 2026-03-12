@@ -1,5 +1,8 @@
 {
-  "rewrites": [
-    { "source": "/api/map/(.*)", "destination": "/api/map/[...path]" }
-  ]
+  "functions": {
+    "api/map/[...path].js": {
+      "memory": 128,
+      "maxDuration": 15
+    }
+  }
 }
