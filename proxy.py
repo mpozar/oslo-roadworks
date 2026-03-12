@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPSTREAM  = "https://pub.soksys.no"
-PORT      = 8765
+PORT      = int(os.environ.get("PORT", 8765))
 
 MIME = {
     ".html": "text/html",
